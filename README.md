@@ -33,7 +33,7 @@
 📸 **Screenshots**
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/1c978d7e-9a07-4b01-b32b-16388e007dc0" width="30%" />
+  <img src="https://github.com/user-attachments/assets/3cd92087-6c17-424c-bd1c-b3922e526fb7" width="30%" />
   <img src="https://github.com/user-attachments/assets/04a57512-851e-47d6-b7f0-c2f969529c51" width="30%" />
 </p>
 <p align="center">
