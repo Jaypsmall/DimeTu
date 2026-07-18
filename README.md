@@ -1,3 +1,4 @@
+
 # 👁️ DIMETU (v1.0.0)
 
 **DimeTu** is a powerful WhatsApp database explorer designed exclusively for rooted Android devices. Built with a clean, modern interface and optimized for speed, it allows developers, researchers, and cybersecurity enthusiasts to inspect WhatsApp's internal SQLite database in real time without exporting backups.
@@ -33,7 +34,11 @@
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/1c978d7e-9a07-4b01-b32b-16388e007dc0" width="30%" />
-  <img src="https://github.com/user-attachments/assets/14c8cc11-1401-4d0e-ae6d-2f4a46165c14" width="30%" />
+  <img src="https://github.com/user-attachments/assets/04a57512-851e-47d6-b7f0-c2f969529c51" width="30%" />
+</p>
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/74f060e7-1b5c-4dfc-97ec-cb067fd4dd19" width="30%" />
+  <img src="https://github.com/user-attachments/assets/22ad014c-a248-4618-a592-3bb2057ef953" width="30%" />
 </p>
 
 ![Kotlin](https://img.shields.io/badge/kotlin-%237F52FF.svg?style=flat&logo=kotlin&logoColor=white)
