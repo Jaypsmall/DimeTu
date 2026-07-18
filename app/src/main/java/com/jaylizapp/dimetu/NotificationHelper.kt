@@ -62,8 +62,27 @@ object NotificationHelper {
             )
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setDefaults(Notification.DEFAULT_ALL)
             .setVibrate(longArrayOf(0, 300, 200, 300))
+            .setSound(android.provider.Settings.System.DEFAULT_NOTIFICATION_URI)
+            .setAutoCancel(true)
+            .build()
+
+        val manager = context.getSystemService(NotificationManager::class.java)
+        manager.notify(NOTIFICATION_ID, notification)
+    }
+
+    fun notifyStatusChange(
+        context: Context,
+        statusText: String,
+        messageText: String?
+    ) {
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.icono_dimetu)
+            .setContentTitle("Estado actualizado")
+            .setContentText("$statusText: ${messageText.orEmpty()}")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setDefaults(Notification.DEFAULT_ALL)
             .setAutoCancel(true)
             .build()
 

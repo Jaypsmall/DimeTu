@@ -29,10 +29,29 @@ private val DemoniacColorScheme = darkColorScheme(
     onSurface = Color(0xFFE0E0E0),
 )
 
+private val ShinySilver = Color(0xFFD1D5D8)
+private val AbyssBlack = Color(0xFF0D0D0D)
+
+private val LightDemoniacColorScheme = lightColorScheme(
+    primary = Color(0xFF8B0000),
+    secondary = Color(0xFF4B0082),
+    background = ShinySilver,
+    surface = Color.White,
+    onPrimary = Color.White,
+    onSecondary = Color.White,
+    onBackground = AbyssBlack,
+    onSurface = AbyssBlack,
+)
+
 @Composable
-fun DemoniacTheme(content: @Composable () -> Unit) {
+fun DemoniacTheme(
+    darkTheme: Boolean = true,
+    content: @Composable () -> Unit
+) {
+    val colorScheme = if (darkTheme) DemoniacColorScheme else LightDemoniacColorScheme
+    
     MaterialTheme(
-        colorScheme = DemoniacColorScheme,
+        colorScheme = colorScheme,
         typography = Typography,
         content = content
     )

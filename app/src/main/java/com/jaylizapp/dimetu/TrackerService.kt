@@ -90,6 +90,9 @@ class TrackerService : Service() {
 
                 val currentId = message.id
                 val currentStatus = message.status
+                val statusLabel = getStatusLabel(currentStatus)
+
+                TrackerRepository.updateTrackingInfo(message.text, statusLabel)
 
                 NotificationHelper.updateServiceNotification(
                     this,
@@ -124,6 +127,9 @@ class TrackerService : Service() {
                 TrackerRepository.addLog(
                     "Cambio: $oldStatusText -> $newStatusText (${elapsed}s)"
                 )
+
+                // Notificar cambio de estado con sonido
+                NotificationHelper.notifyStatusChange(this, newStatusText, message.text)
 
                 val deliveredOrRead = currentStatus == 5 || currentStatus == 13
                 val wasAlreadyDeliveredOrRead = lastStatus == 5 || lastStatus == 13
@@ -169,6 +175,7 @@ class TrackerService : Service() {
     override fun onDestroy() {
         handler.removeCallbacks(checkRunnable)
         TrackerRepository.setServiceRunning(false)
+        TrackerRepository.updateTrackingInfo(null, null)
         TrackerRepository.addLog("Rastreador detenido")
         super.onDestroy()
     }
