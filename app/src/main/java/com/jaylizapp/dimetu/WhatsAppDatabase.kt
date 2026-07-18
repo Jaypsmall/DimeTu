@@ -1,246 +1,233 @@
 package com.jaylizapp.dimetu
 
 import android.content.Context
-import android.database.sqlite.SQLiteDatabase
-import java.io.File
 import android.util.Log
 
-data class MessageInfo(val id: Long, val status: Int, val text: String?)
-data class ChatInfo(val jid: String, val name: String)
+data class MessageInfo(
+    val id: Long,
+    val chatId: Long,
+    val status: Int,
+    val text: String?
+)
+
+data class ChatInfo(
+    val chatId: Long,
+    val jidUser: String,
+    val jidServer: String,
+    val rawJid: String?,
+    val name: String,
+    val lastTimestamp: Long
+)
 
 object WhatsAppDatabase {
-    private const val DB_NAME = "msgstore.db"
 
     fun debugLastMessages(context: Context) {
-
-        val dbFile = File(context.filesDir, DB_NAME)
-        if (!dbFile.exists()) return
-
-        var db: SQLiteDatabase? = null
-
-        try {
-
-            db = SQLiteDatabase.openDatabase(
-                dbFile.absolutePath,
-                null,
-                SQLiteDatabase.OPEN_READONLY or SQLiteDatabase.NO_LOCALIZED_COLLATORS
-            )
-
-            val cursor = db.rawQuery(
-                """
-            SELECT
-                _id,
-                status,
-                message_type,
-                text_data
-            FROM message
-            WHERE from_me = 1
-            ORDER BY _id DESC
-            LIMIT 20
-            """.trimIndent(),
-                null
-            )
-
-            while (cursor.moveToNext()) {
-
-                Log.d(
-                    "WA_DEBUG",
-                    "id=${cursor.getLong(0)} status=${cursor.getInt(1)} type=${cursor.getInt(2)} text=${cursor.getString(3)}"
-                )
-
-            }
-
-            cursor.close()
-
-        } catch (e: Exception) {
-
-            Log.e("WA_DEBUG", "Error", e)
-
-        } finally {
-
-            db?.close()
-
+        getRecentMessageDebugLines(context, 20).forEach {
+            Log.d("WA_DEBUG", it)
         }
     }
-    
+
+    fun getRecentMessageDebugLines(
+        context: Context,
+        limit: Int = 20
+    ): List<String> {
+        val safeLimit = limit.coerceIn(1, 100)
+        val output = RootSqlite.query(
+            """
+            SELECT
+                message._id,
+                hex(COALESCE(jid.user, '')),
+                hex(COALESCE(jid.server, '')),
+                message.from_me,
+                message.status,
+                hex(COALESCE(message.text_data, ''))
+            FROM message
+            JOIN chat ON message.chat_row_id = chat._id
+            JOIN jid ON chat.jid_row_id = jid._id
+            WHERE message.text_data IS NOT NULL
+            ORDER BY message.timestamp DESC, message._id DESC
+            LIMIT $safeLimit;
+            """.trimIndent()
+        ) ?: return listOf("No se pudo leer msgstore.db con root/sqlite3")
+
+        return output.rows().mapNotNull { row ->
+            if (row.size < 6) return@mapNotNull null
+
+            "id=${row[0]} jid=${row[1].fromHex()}@${row[2].fromHex()} " +
+                "from_me=${row[3]} status=${row[4]} text=${row[5].fromHex()}"
+        }.ifEmpty {
+            listOf("La consulta no devolvio mensajes con texto")
+        }
+    }
 
     fun getChats(context: Context): List<ChatInfo> {
+        val hasJidMap = tableExists("jid_map")
+        val output = queryChats(hasJidMap) ?: queryChats(false)
 
-        val dbFile = File(context.filesDir, DB_NAME)
+        if (output.isNullOrBlank()) return emptyList()
 
-        if (!dbFile.exists())
-            return emptyList()
+        return output.rows().mapNotNull { row ->
+            if (row.size < 6) return@mapNotNull null
 
-        val chats = mutableListOf<ChatInfo>()
+            val chatId = row[0].toLongOrNull() ?: return@mapNotNull null
+            val jidUser = row[1].fromHex()
+            val jidServer = row[2].fromHex()
+            val rawJid = row[3].fromHex().ifBlank { null }
+            val subject = row[4].fromHex().ifBlank { null }
+            val lastTimestamp = row[5].toLongOrNull() ?: 0L
 
-        var db: SQLiteDatabase? = null
-
-        try {
-
-            db = SQLiteDatabase.openDatabase(
-                dbFile.absolutePath,
-                null,
-                SQLiteDatabase.OPEN_READONLY or SQLiteDatabase.NO_LOCALIZED_COLLATORS
+            ChatInfo(
+                chatId = chatId,
+                jidUser = jidUser,
+                jidServer = jidServer,
+                rawJid = rawJid,
+                name = displayName(subject, jidUser, jidServer, rawJid, chatId),
+                lastTimestamp = lastTimestamp
             )
-
-            val cursor = db.rawQuery(
-                """
-            SELECT 
-                chat._id,
-                jid.raw_string,
-                chat.subject
-            FROM chat
-            JOIN jid ON chat.jid_row_id = jid._id
-            WHERE jid.type = 0
-            """.trimIndent(),
-                null
-            )
-
-            while (cursor.moveToNext()) {
-                val jid = cursor.getString(1)
-                val subject = cursor.getString(2)
-                
-                chats.add(
-                    ChatInfo(
-                        jid = jid,
-                        name = subject ?: jid.substringBefore("@")
-                    )
-                )
-            }
-            cursor.close()
-
-        } catch (e: Exception) {
-
-            android.util.Log.e(
-                "WhatsAppDatabase",
-                "Error leyendo chats",
-                e
-            )
-
-        } finally {
-
-            db?.close()
-
         }
-
-        return chats
     }
 
     fun getLatestSentMessageForChat(
         context: Context,
-        jid: String
+        chatId: Long
     ): MessageInfo? {
-
-        val dbFile = File(context.filesDir, DB_NAME)
-
-        if (!dbFile.exists()) {
-            Log.e("WhatsAppDatabase", "No existe la BD: ${dbFile.absolutePath}")
-            return null
-        }
-
-        var db: SQLiteDatabase? = null
-
-        return try {
-
-            db = SQLiteDatabase.openDatabase(
-                dbFile.absolutePath,
-                null,
-                SQLiteDatabase.OPEN_READONLY or SQLiteDatabase.NO_LOCALIZED_COLLATORS
-            )
-
-            val query = """
-            SELECT _id, status, text_data
+        val output = RootSqlite.query(
+            """
+            SELECT
+                _id,
+                chat_row_id,
+                status,
+                hex(COALESCE(text_data, ''))
             FROM message
             WHERE from_me = 1
-            AND chat_row_id = (
-                SELECT chat._id
-                FROM chat
-                JOIN jid ON chat.jid_row_id = jid._id
-                WHERE jid.raw_string = ?
-            )
-            ORDER BY _id DESC
-            LIMIT 1
-        """.trimIndent()
+            AND chat_row_id = $chatId
+            ORDER BY timestamp DESC, _id DESC
+            LIMIT 1;
+            """.trimIndent()
+        ) ?: return null
 
-            val cursor = db.rawQuery(query, arrayOf(jid))
-
-            if (cursor.moveToFirst()) {
-
-                val message = MessageInfo(
-                    id = cursor.getLong(0),
-                    status = cursor.getInt(1),
-                    text = cursor.getString(2)
-                )
-
-                cursor.close()
-
-                message
-
-            } else {
-
-                cursor.close()
-                null
-
-            }
-
-        } catch (e: Exception) {
-
-            Log.e("WhatsAppDatabase", "Error leyendo chat $jid", e)
-            null
-
-        } finally {
-
-            db?.close()
-
-        }
+        return output.firstMessageOrNull()
     }
 
     fun getLatestSentMessageGlobal(context: Context): MessageInfo? {
-        val dbFile = File(context.filesDir, DB_NAME)
-        if (!dbFile.exists()) return null
+        val output = RootSqlite.query(
+            """
+            SELECT
+                message._id,
+                message.chat_row_id,
+                message.status,
+                hex(COALESCE(message.text_data, ''))
+            FROM message
+            JOIN chat ON message.chat_row_id = chat._id
+            JOIN jid ON chat.jid_row_id = jid._id
+            WHERE message.from_me = 1
+            ORDER BY message.timestamp DESC, message._id DESC
+            LIMIT 1;
+            """.trimIndent()
+        ) ?: return null
 
-        var db: SQLiteDatabase? = null
+        return output.firstMessageOrNull()
+    }
 
-        return try {
-
-            db = SQLiteDatabase.openDatabase(
-                dbFile.absolutePath,
-                null,
-                SQLiteDatabase.OPEN_READONLY or SQLiteDatabase.NO_LOCALIZED_COLLATORS
+    private fun queryChats(useJidMap: Boolean): String? {
+        val sql = if (useJidMap) {
+            """
+            SELECT
+                chat._id,
+                hex(COALESCE(realjid.user, jid.user, '')),
+                hex(COALESCE(realjid.server, jid.server, '')),
+                hex(COALESCE(realjid.raw_string, jid.raw_string, '')),
+                hex(COALESCE(chat.subject, '')),
+                COALESCE(chat.sort_timestamp, 0)
+            FROM chat
+            JOIN jid ON chat.jid_row_id = jid._id
+            LEFT JOIN jid_map ON jid_map.lid_row_id = jid._id
+            LEFT JOIN jid realjid ON realjid._id = jid_map.jid_row_id
+            WHERE EXISTS (
+                SELECT 1 FROM message WHERE message.chat_row_id = chat._id
             )
-
-            val cursor = db.rawQuery(
-                "SELECT _id, status, text_data FROM message WHERE from_me = 1 ORDER BY _id DESC LIMIT 1",
-                null
+            ORDER BY chat.sort_timestamp DESC;
+            """.trimIndent()
+        } else {
+            """
+            SELECT
+                chat._id,
+                hex(COALESCE(jid.user, '')),
+                hex(COALESCE(jid.server, '')),
+                hex(COALESCE(jid.raw_string, '')),
+                hex(COALESCE(chat.subject, '')),
+                COALESCE(chat.sort_timestamp, 0)
+            FROM chat
+            JOIN jid ON chat.jid_row_id = jid._id
+            WHERE EXISTS (
+                SELECT 1 FROM message WHERE message.chat_row_id = chat._id
             )
+            ORDER BY chat.sort_timestamp DESC;
+            """.trimIndent()
+        }
 
-            if (cursor.moveToFirst()) {
+        return RootSqlite.query(sql)
+    }
 
-                val id = cursor.getLong(0)
-                val status = cursor.getInt(1)
-                val text = cursor.getString(2)
+    private fun tableExists(tableName: String): Boolean {
+        return RootSqlite.query(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = '$tableName' LIMIT 1;"
+        )?.trim() == "1"
+    }
 
-                cursor.close()
+    private fun String.firstMessageOrNull(): MessageInfo? {
+        val row = rows().firstOrNull() ?: return null
+        if (row.size < 4) return null
 
-                MessageInfo(id, status, text)
+        return MessageInfo(
+            id = row[0].toLongOrNull() ?: return null,
+            chatId = row[1].toLongOrNull() ?: return null,
+            status = row[2].toIntOrNull() ?: -1,
+            text = row[3].fromHex().ifBlank { null }
+        )
+    }
 
-            } else {
+    private fun String.rows(): List<List<String>> {
+        return lineSequence()
+            .map { it.trimEnd() }
+            .filter { it.isNotBlank() }
+            .map { it.split("|") }
+            .toList()
+    }
 
-                cursor.close()
-                null
+    private fun displayName(
+        subject: String?,
+        jidUser: String,
+        jidServer: String,
+        rawJid: String?,
+        chatId: Long
+    ): String {
+        subject.cleanOrNull()?.let { return it }
+        rawJid.cleanOrNull()?.let { return it }
 
-            }
-
-        } catch (e: Exception) {
-
-            Log.e("WhatsAppDatabase", "Error leyendo la BD", e)
-            null
-
-        } finally {
-
-            db?.close()
-
+        return when {
+            jidUser.isNotBlank() && jidServer.isNotBlank() -> "$jidUser@$jidServer"
+            jidUser.isNotBlank() -> jidUser
+            else -> "Chat $chatId"
         }
     }
-}
 
+    private fun String.fromHex(): String {
+        if (isBlank()) return ""
+
+        return try {
+            val bytes = chunked(2)
+                .map { it.toInt(16).toByte() }
+                .toByteArray()
+
+            String(bytes, Charsets.UTF_8)
+        } catch (e: Exception) {
+            this
+        }
+    }
+
+    private fun String?.cleanOrNull(): String? {
+        val value = this?.trim()
+        return value?.takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }
+    }
+}

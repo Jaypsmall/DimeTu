@@ -3,6 +3,9 @@ package com.jaylizapp.dimetu
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 object TrackerRepository {
     private val _logs = MutableStateFlow<List<String>>(emptyList())
@@ -11,22 +14,23 @@ object TrackerRepository {
     private val _isServiceRunning = MutableStateFlow(false)
     val isServiceRunning: StateFlow<Boolean> = _isServiceRunning.asStateFlow()
 
-    private val _selectedChatJid = MutableStateFlow<String?>(null)
-    val selectedChatJid: StateFlow<String?> = _selectedChatJid.asStateFlow()
+    private val _selectedChatId = MutableStateFlow<Long?>(null)
+    val selectedChatId: StateFlow<Long?> = _selectedChatId.asStateFlow()
 
     private val _availableChats = MutableStateFlow<List<ChatInfo>>(emptyList())
     val availableChats: StateFlow<List<ChatInfo>> = _availableChats.asStateFlow()
 
     fun addLog(message: String) {
         val currentLogs = _logs.value.toMutableList()
-        // Filtrar mensajes de éxito repetitivos para no ensuciar el pergamino
-        val isRepetitive = (message.contains("Confirmado") || message.contains("OK")) && 
-                          currentLogs.any { it.contains("Confirmado") || it.contains("OK") }
-        
-        if (isRepetitive) return
-        
-        currentLogs.add(0, "[${System.currentTimeMillis()}] $message")
-        if (currentLogs.size > 50) currentLogs.removeAt(currentLogs.size - 1)
+        if (currentLogs.firstOrNull()?.endsWith(message) == true) return
+
+        val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+        currentLogs.add(0, "[$time] $message")
+
+        if (currentLogs.size > 50) {
+            currentLogs.removeAt(currentLogs.lastIndex)
+        }
+
         _logs.value = currentLogs
     }
 
@@ -34,8 +38,8 @@ object TrackerRepository {
         _isServiceRunning.value = running
     }
 
-    fun setSelectedChat(jid: String?) {
-        _selectedChatJid.value = jid
+    fun setSelectedChat(chatId: Long?) {
+        _selectedChatId.value = chatId
     }
 
     fun setAvailableChats(chats: List<ChatInfo>) {

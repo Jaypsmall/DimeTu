@@ -8,20 +8,21 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
-import android.util.Log
 
 class TrackerService : Service() {
 
     private val handler = Handler(Looper.getMainLooper())
 
+    private var lastChatId: Long? = null
     private var lastMsgId: Long? = null
     private var lastStatus: Int? = null
     private var watchStartTime: Long = 0L
+    @Volatile private var checking = false
 
     private val checkRunnable = object : Runnable {
         override fun run() {
             checkWhatsAppStatus()
-            handler.postDelayed(this, 5000)
+            handler.postDelayed(this, 3000)
         }
     }
 
@@ -31,166 +32,144 @@ class TrackerService : Service() {
         flags: Int,
         startId: Int
     ): Int {
-
         NotificationHelper.createNotificationChannel(this)
 
-        // Inicia el servicio en primer plano
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-
             startForeground(
                 NotificationHelper.SERVICE_NOTIFICATION_ID,
                 NotificationHelper.getServiceNotification(this),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
             )
-
         } else {
-
             startForeground(
                 NotificationHelper.SERVICE_NOTIFICATION_ID,
                 NotificationHelper.getServiceNotification(this)
             )
-
         }
 
-        // Inicia el demonio root
-        RootReader.startRootDaemon(this)
-
         TrackerRepository.setServiceRunning(true)
-        TrackerRepository.addLog("🚀 Rastreador iniciado")
+        TrackerRepository.addLog("Rastreador iniciado")
 
+        handler.removeCallbacks(checkRunnable)
         handler.post(checkRunnable)
 
         return START_STICKY
     }
 
     private fun checkWhatsAppStatus() {
+        if (checking) return
+        checking = true
 
-        val selectedJid = TrackerRepository.selectedChatJid.value
+        val selectedChatId = TrackerRepository.selectedChatId.value
 
         Thread {
-
-            val ready = RootReader.isDbReady(this)
-
-            if (!ready) {
-
-                TrackerRepository.addLog("⏳ Esperando copia de la BD...")
-
-                return@Thread
-            }
-
-            val message =
-                if (selectedJid != null) {
-
-                    WhatsAppDatabase.getLatestSentMessageForChat(
-                        this,
-                        selectedJid
-                    )
-
-                } else {
-
-                    WhatsAppDatabase.getLatestSentMessageGlobal(
-                        this
-                    )
-
+            try {
+                if (selectedChatId != lastChatId) {
+                    lastChatId = selectedChatId
+                    lastMsgId = null
+                    lastStatus = null
+                    watchStartTime = 0L
                 }
 
-            if (message == null)
-                return@Thread
+                if (!RootSqlite.isAvailable()) {
+                    TrackerRepository.addLog("Esperando root/sqlite3...")
+                    return@Thread
+                }
 
-            val currentId = message.id
-            val currentStatus = message.status
+                val message =
+                    if (selectedChatId != null) {
+                        WhatsAppDatabase.getLatestSentMessageForChat(this, selectedChatId)
+                    } else {
+                        WhatsAppDatabase.getLatestSentMessageGlobal(this)
+                    }
 
-            NotificationHelper.updateServiceNotification(
-                this,
-                currentStatus,
-                message.text
-            )
+                if (message == null) {
+                    TrackerRepository.addLog("No hay mensajes enviados para rastrear")
+                    return@Thread
+                }
 
-            if (lastMsgId != currentId) {
+                val currentId = message.id
+                val currentStatus = message.status
 
-                lastMsgId = currentId
-                lastStatus = currentStatus
-                watchStartTime = System.currentTimeMillis()
-
-                val statusText = getStatusLabel(currentStatus)
-                
-                TrackerRepository.addLog("""
-                    📩 NUEVO MENSAJE
-                    ID: $currentId
-                    TEXTO: ${message.text ?: "(sin texto)"}
-                    ESTADO: $statusText
-                """.trimIndent())
-
-                return@Thread
-            }
-
-            if (currentStatus == lastStatus)
-                return@Thread
-
-            val elapsed =
-                (System.currentTimeMillis() - watchStartTime) / 1000
-
-            val oldStatusText = getStatusLabel(lastStatus ?: -1)
-            val newStatusText = getStatusLabel(currentStatus)
-
-            TrackerRepository.addLog(
-                "Cambio: $oldStatusText → $newStatusText (${elapsed}s)"
-            )
-
-            if ((lastStatus == 0 || lastStatus == 4)
-                && currentStatus == 5
-            ) {
-
-                NotificationHelper.showDeliveredNotification(
+                NotificationHelper.updateServiceNotification(
                     this,
+                    currentStatus,
                     message.text
                 )
 
+                if (lastMsgId != currentId) {
+                    lastMsgId = currentId
+                    lastStatus = currentStatus
+                    watchStartTime = System.currentTimeMillis()
+
+                    TrackerRepository.addLog(
+                        """
+                        NUEVO MENSAJE
+                        ID: $currentId
+                        CHAT: ${message.chatId}
+                        TEXTO: ${message.text ?: "(sin texto)"}
+                        ESTADO: ${getStatusLabel(currentStatus)}
+                        """.trimIndent()
+                    )
+
+                    return@Thread
+                }
+
+                if (currentStatus == lastStatus) return@Thread
+
+                val elapsed = (System.currentTimeMillis() - watchStartTime) / 1000
+                val oldStatusText = getStatusLabel(lastStatus ?: -1)
+                val newStatusText = getStatusLabel(currentStatus)
+
                 TrackerRepository.addLog(
-                    "🔔 MENSAJE ENTREGADO ✓✓"
+                    "Cambio: $oldStatusText -> $newStatusText (${elapsed}s)"
                 )
 
-                // Dejamos de vigilar ese mensaje
+                val deliveredOrRead = currentStatus == 5 || currentStatus == 13
+                val wasAlreadyDeliveredOrRead = lastStatus == 5 || lastStatus == 13
+
+                if (deliveredOrRead && !wasAlreadyDeliveredOrRead) {
+                    NotificationHelper.showDeliveredNotification(
+                        this,
+                        message.text
+                    )
+
+                    if (currentStatus == 13) {
+                        TrackerRepository.addLog("MENSAJE LEIDO")
+                    } else {
+                        TrackerRepository.addLog("MENSAJE ENTREGADO")
+                    }
+
+                    lastStatus = currentStatus
+                    handler.removeCallbacks(checkRunnable)
+
+                    stopForeground(STOP_FOREGROUND_DETACH)
+                    stopSelf()
+
+                    return@Thread
+                }
+
                 lastStatus = currentStatus
-                handler.removeCallbacks(checkRunnable)
-
-                stopForeground(STOP_FOREGROUND_DETACH)
-                stopSelf()
-
-                return@Thread
+            } finally {
+                checking = false
             }
-            
-            if (currentStatus == 13) {
-                 TrackerRepository.addLog(
-                    "👁️ MENSAJE LEÍDO"
-                )
-            }
-
-            lastStatus = currentStatus
-
         }.start()
     }
 
     private fun getStatusLabel(status: Int): String {
         return when (status) {
-            0 -> "⏳ Pendiente"
-            4 -> "✓ Enviado"
-            5 -> "✓✓ Entregado"
-            13 -> "👁️ Leído"
+            0 -> "Pendiente (reloj)"
+            4 -> "Enviado"
+            5 -> "Entregado"
+            13 -> "Leido"
             else -> "Estado $status"
         }
     }
 
     override fun onDestroy() {
-
         handler.removeCallbacks(checkRunnable)
-
-        RootReader.stopRootDaemon()
-
         TrackerRepository.setServiceRunning(false)
-
-        TrackerRepository.addLog("🛑 Rastreador detenido")
-
+        TrackerRepository.addLog("Rastreador detenido")
         super.onDestroy()
     }
 
