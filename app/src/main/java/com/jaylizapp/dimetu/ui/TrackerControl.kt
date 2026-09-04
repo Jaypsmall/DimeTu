@@ -1,6 +1,7 @@
 package com.jaylizapp.dimetu.ui
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -30,9 +31,9 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Upload
-import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DrawerValue
@@ -42,10 +43,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -72,6 +73,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
@@ -106,8 +109,10 @@ fun TrackerControl() {
     val trackingStatus by TrackerRepository.trackingStatus.collectAsState()
     val isDarkMode by TrackerRepository.isDarkMode.collectAsState()
     val isEnglish by TrackerRepository.isEnglish.collectAsState()
+    val checkIntervalMs by TrackerRepository.checkIntervalMs.collectAsState()
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    var showSettingsDialog by remember { mutableStateOf(false) }
 
     val bgColor = if (isDarkMode) Color(0xFF101418) else ShinySilver
     val cardColor = if (isDarkMode) Color(0xFF151B23) else Color.White
@@ -116,28 +121,32 @@ fun TrackerControl() {
     val dividerColor = if (isDarkMode) Color(0xFF30363D) else Color(0xFFB0B4B8)
 
     val titleShadow = Shadow(
-        color = Color.Black.copy(alpha = 0.8f),
-        offset = Offset(6f, 6f),
-        blurRadius = 12f
+        color = Color.Black.copy(alpha = 0.6f),
+        offset = Offset(4f, 4f),
+        blurRadius = 8f
     )
 
     val demoniTitle = buildAnnotatedString {
         val capsStyle = SpanStyle(
             color = Color(0xFF3E6BDB),
-            fontWeight = FontWeight.ExtraBold,
-            shadow = titleShadow
+            fontWeight = FontWeight.Black,
+            shadow = titleShadow,
+            fontFamily = FontFamily.SansSerif,
+            fontStyle = FontStyle.Italic
         )
         val lowerStyle = SpanStyle(
             color = if (isDarkMode) Color.White else AbyssBlack,
-            fontWeight = FontWeight.ExtraBold,
-            shadow = titleShadow
+            fontWeight = FontWeight.Black,
+            shadow = if (isDarkMode) null else titleShadow, // Quitamos sombra a blancas en oscuro para evitar efecto transparencia
+            fontFamily = FontFamily.SansSerif,
+            fontStyle = FontStyle.Italic
         )
 
-        withStyle(style = capsStyle) { append("D") }
-        withStyle(style = lowerStyle) { append("i") }
-        withStyle(style = capsStyle) { append("M") }
-        withStyle(style = lowerStyle) { append("e") }
-        withStyle(style = capsStyle) { append("T") }
+        withStyle(style = capsStyle) { append("D ") }
+        withStyle(style = lowerStyle) { append("i ") }
+        withStyle(style = capsStyle) { append("M ") }
+        withStyle(style = lowerStyle) { append("e ") }
+        withStyle(style = capsStyle) { append("T ") }
         withStyle(style = lowerStyle) { append("u") }
         withStyle(style = lowerStyle) { append(" 😈") }
     }
@@ -158,7 +167,7 @@ fun TrackerControl() {
                     // 1. EL TÍTULO
                     Text(
                         text = demoniTitle,
-                        style = MaterialTheme.typography.headlineMedium,
+                        style = MaterialTheme.typography.headlineLarge,
                         modifier = Modifier.padding(vertical = 32.dp)
                     )
 
@@ -174,6 +183,7 @@ fun TrackerControl() {
                         icon = Icons.Default.Settings,
                         isDarkMode = isDarkMode
                     ) {
+                        showSettingsDialog = true
                         scope.launch { drawerState.close() }
                     }
                     
@@ -190,20 +200,22 @@ fun TrackerControl() {
                     Spacer(modifier = Modifier.height(16.dp))
 
                     DrawerButton(
-                        text = if (isEnglish) "Import" else "Importar",
-                        icon = Icons.Default.Upload,
+                        text = if (isEnglish) "Reset App" else "Reiniciar App",
+                        icon = Icons.Default.Refresh,
                         isDarkMode = isDarkMode
                     ) {
+                        TrackerRepository.resetAll()
                         scope.launch { drawerState.close() }
                     }
                     
                     Spacer(modifier = Modifier.height(16.dp))
 
                     DrawerButton(
-                        text = if (isEnglish) "Export" else "Exportar",
+                        text = if (isEnglish) "Export Logs" else "Exportar Logs",
                         icon = Icons.Default.Download,
                         isDarkMode = isDarkMode
                     ) {
+                        exportLogs(context, logs)
                         scope.launch { drawerState.close() }
                     }
 
@@ -235,6 +247,16 @@ fun TrackerControl() {
             }
         }
     ) {
+        if (showSettingsDialog) {
+            SettingsDialog(
+                isDarkMode = isDarkMode,
+                isEnglish = isEnglish,
+                currentIntervalMs = checkIntervalMs,
+                onDismiss = { showSettingsDialog = false },
+                onSave = { TrackerRepository.setCheckInterval(it) }
+            )
+        }
+
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -308,6 +330,24 @@ fun TrackerControl() {
             ) {
                 item {
                     Header(isDarkMode, subTextColor, isEnglish)
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = if (isEnglish) "RESET APP" else "REINICIAR APP",
+                            color = Color(0xFF3E6BDB),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .clickable { TrackerRepository.resetAll() }
+                                .padding(vertical = 8.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -539,20 +579,24 @@ private fun DrawerHeader(isDarkMode: Boolean, isEnglish: Boolean) {
     val drawerTitle = buildAnnotatedString {
         val capsStyle = SpanStyle(
             color = Color(0xFF3E6BDB),
-            fontWeight = FontWeight.ExtraBold,
-            shadow = titleShadow
+            fontWeight = FontWeight.Black,
+            shadow = titleShadow,
+            fontFamily = FontFamily.SansSerif,
+            fontStyle = FontStyle.Italic
         )
         val lowerStyle = SpanStyle(
             color = if (isDarkMode) Color.White else AbyssBlack,
-            fontWeight = FontWeight.ExtraBold,
-            shadow = titleShadow
+            fontWeight = FontWeight.Black,
+            shadow = titleShadow,
+            fontFamily = FontFamily.SansSerif,
+            fontStyle = FontStyle.Italic
         )
 
-        withStyle(style = capsStyle) { append("D") }
-        withStyle(style = lowerStyle) { append("i") }
-        withStyle(style = capsStyle) { append("M") }
-        withStyle(style = lowerStyle) { append("e") }
-        withStyle(style = capsStyle) { append("T") }
+        withStyle(style = capsStyle) { append("D ") }
+        withStyle(style = lowerStyle) { append("i ") }
+        withStyle(style = capsStyle) { append("M ") }
+        withStyle(style = lowerStyle) { append("e ") }
+        withStyle(style = capsStyle) { append("T ") }
         withStyle(style = lowerStyle) { append("u") }
         withStyle(style = lowerStyle) { append(" 😈") }
     }
@@ -579,7 +623,7 @@ private fun DrawerHeader(isDarkMode: Boolean, isEnglish: Boolean) {
         
         Text(
             text = drawerTitle,
-            style = MaterialTheme.typography.headlineMedium
+            style = MaterialTheme.typography.headlineLarge
         )
         
         Text(
@@ -604,20 +648,24 @@ private fun Header(isDarkMode: Boolean, subTextColor: Color, isEnglish: Boolean)
             color = Color(0xFF3E6BDB),
             fontWeight = FontWeight.Black,
             shadow = titleShadow,
-            fontSize = 44.sp
+            fontSize = 44.sp,
+            fontFamily = FontFamily.SansSerif,
+            fontStyle = FontStyle.Italic
         )
         val lowerStyle = SpanStyle(
             color = if (isDarkMode) Color.White else AbyssBlack,
             fontWeight = FontWeight.Black,
             shadow = titleShadow,
-            fontSize = 44.sp
+            fontSize = 44.sp,
+            fontFamily = FontFamily.SansSerif,
+            fontStyle = FontStyle.Italic
         )
 
-        withStyle(style = capsStyle) { append("D") }
-        withStyle(style = lowerStyle) { append("i") }
-        withStyle(style = capsStyle) { append("M") }
-        withStyle(style = lowerStyle) { append("e") }
-        withStyle(style = capsStyle) { append("T") }
+        withStyle(style = capsStyle) { append("D ") }
+        withStyle(style = lowerStyle) { append("i ") }
+        withStyle(style = capsStyle) { append("M ") }
+        withStyle(style = lowerStyle) { append("e ") }
+        withStyle(style = capsStyle) { append("T ") }
         withStyle(style = lowerStyle) { append("u") }
         withStyle(style = lowerStyle) { append(" 😈") }
     }
@@ -625,7 +673,7 @@ private fun Header(isDarkMode: Boolean, subTextColor: Color, isEnglish: Boolean)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 24.dp),
+            .padding(top = 16.dp, bottom = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
@@ -635,31 +683,6 @@ private fun Header(isDarkMode: Boolean, subTextColor: Color, isEnglish: Boolean)
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
         )
-
-        Spacer(modifier = Modifier.height(18.dp))
-
-        androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) {
-            // Efecto de resplandor sutil detras del logo
-            Surface(
-                modifier = Modifier.size(94.dp),
-                color = Color(0xFF3E6BDB).copy(alpha = if (isDarkMode) 0.12f else 0.08f),
-                shape = RoundedCornerShape(22.dp)
-            ) {}
-            
-            Image(
-                painter = painterResource(id = R.drawable.icono_dimetu),
-                contentDescription = "Logo DiMeTu",
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .border(
-                        width = 2.dp, 
-                        color = Color(0xFF3E6BDB).copy(alpha = 0.3f), 
-                        shape = RoundedCornerShape(20.dp)
-                    ),
-                contentScale = ContentScale.Crop
-            )
-        }
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -684,13 +707,13 @@ private fun Header(isDarkMode: Boolean, subTextColor: Color, isEnglish: Boolean)
 }
 
 @Composable
-private fun SectionTitle(text: String, subTextColor: Color) {
+private fun SectionTitle(text: String, subTextColor: Color, modifier: Modifier = Modifier) {
     Text(
         text = text.uppercase(),
         color = subTextColor,
         fontSize = 12.sp,
         fontWeight = FontWeight.Bold,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(bottom = 8.dp)
     )
@@ -919,5 +942,83 @@ private fun translateStatus(status: String?, isEnglish: Boolean): String {
         status.contains("Entregado") -> "Delivered"
         status.contains("Leido") -> "Read"
         else -> status
+    }
+}
+
+@Composable
+fun SettingsDialog(
+    isDarkMode: Boolean,
+    isEnglish: Boolean,
+    currentIntervalMs: Long,
+    onDismiss: () -> Unit,
+    onSave: (Long) -> Unit
+) {
+    var tempInterval by remember { mutableStateOf(currentIntervalMs.toFloat()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = if (isDarkMode) Color(0xFF151B23) else Color.White,
+        title = {
+            Text(
+                if (isEnglish) "Tracking Interval" else "Intervalo de Rastreo",
+                color = if (isDarkMode) Color.White else AbyssBlack
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    text = "${(tempInterval / 1000).toInt()} ${if (isEnglish) "seconds" else "segundos"}",
+                    color = if (isDarkMode) Color.Gray else Color.DarkGray
+                )
+                Slider(
+                    value = tempInterval,
+                    onValueChange = { tempInterval = it },
+                    valueRange = 1000f..10000f,
+                    steps = 8,
+                    colors = SliderDefaults.colors(
+                        thumbColor = Color(0xFF3E6BDB),
+                        activeTrackColor = Color(0xFF3E6BDB)
+                    )
+                )
+                Text(
+                    text = if (isEnglish) 
+                        "Lower interval uses more battery and root requests." 
+                    else 
+                        "Un intervalo menor consume mas bateria y peticiones root.",
+                    fontSize = 12.sp,
+                    color = if (isDarkMode) Color.Gray else Color.DarkGray
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onSave(tempInterval.toLong())
+                    onDismiss()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3E6BDB))
+            ) {
+                Text(if (isEnglish) "Save" else "Guardar", color = Color.White)
+            }
+        }
+    )
+}
+
+fun exportLogs(context: Context, logs: List<String>) {
+    try {
+        val fileName = "Dimetu_Logs_${System.currentTimeMillis()}.txt"
+        val content = logs.joinToString("\n")
+        
+        context.openFileOutput(fileName, Context.MODE_PRIVATE).use {
+            it.write(content.toByteArray())
+        }
+        
+        Toast.makeText(
+            context, 
+            if (TrackerRepository.isEnglish.value) "Logs exported to app internal storage" else "Logs exportados al almacenamiento interno", 
+            Toast.LENGTH_LONG
+        ).show()
+    } catch (e: Exception) {
+        Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
     }
 }

@@ -27,9 +27,19 @@ object NotificationHelper {
         ).apply {
             description = "Seguimiento del estado de mensajes de WhatsApp"
             enableLights(true)
+            lightColor = android.graphics.Color.RED
             enableVibration(true)
-            vibrationPattern = longArrayOf(0, 250, 150, 250)
+            vibrationPattern = longArrayOf(0, 500, 200, 500)
             setShowBadge(true)
+            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            // Aseguramos sonido
+            setSound(
+                android.provider.Settings.System.DEFAULT_NOTIFICATION_URI,
+                android.media.AudioAttributes.Builder()
+                    .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
         }
 
         val manager = context.getSystemService(NotificationManager::class.java)
@@ -52,18 +62,19 @@ object NotificationHelper {
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.icono_dimetu)
-            .setContentTitle("Mensaje entregado")
+            .setContentTitle("¡MENSAJE ENTREGADO! 😈")
             .setContentText(
                 if (text.isNullOrBlank()) {
-                    "El mensaje ha llegado al destinatario"
+                    "El objetivo ha recibido el mensaje."
                 } else {
                     "Entregado: $text"
                 }
             )
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setDefaults(Notification.DEFAULT_ALL)
-            .setVibrate(longArrayOf(0, 300, 200, 300))
+            .setVibrate(longArrayOf(0, 500, 250, 500))
             .setSound(android.provider.Settings.System.DEFAULT_NOTIFICATION_URI)
             .setAutoCancel(true)
             .build()
@@ -79,10 +90,12 @@ object NotificationHelper {
     ) {
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.icono_dimetu)
-            .setContentTitle("Estado actualizado")
+            .setContentTitle("Cambio de Estado 😈")
             .setContentText("$statusText: ${messageText.orEmpty()}")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setDefaults(Notification.DEFAULT_ALL)
+            .setSound(android.provider.Settings.System.DEFAULT_NOTIFICATION_URI)
             .setAutoCancel(true)
             .build()
 

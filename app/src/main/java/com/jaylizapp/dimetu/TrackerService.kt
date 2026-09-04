@@ -22,7 +22,8 @@ class TrackerService : Service() {
     private val checkRunnable = object : Runnable {
         override fun run() {
             checkWhatsAppStatus()
-            handler.postDelayed(this, 3000)
+            val interval = TrackerRepository.checkIntervalMs.value
+            handler.postDelayed(this, interval)
         }
     }
 
