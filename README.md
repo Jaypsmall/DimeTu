@@ -1,7 +1,7 @@
 
-# 👁️ DIMETU (v1.0.0)
+# 👁️ DIMETU (v1.0.1)  ![Android](https://img.shields.io/badge/Android-181717?style=flat&logo=android&logoColor=yellow) ![Kotlin](https://img.shields.io/badge/kotlin-181717?style=flat&logo=kotlin&logoColor=yellow) 
 
-**DimeTu** is a powerful WhatsApp database explorer designed exclusively for rooted Android devices. Built with a clean, modern interface and optimized for speed, it allows developers, researchers, and cybersecurity enthusiasts to inspect WhatsApp's internal SQLite database in real time without exporting backups.
+**DimeTu** Apk is a powerful WhatsApp database explorer designed exclusively for rooted Android devices. Built with a clean, modern interface and optimized for speed, it allows developers, researchers, and cybersecurity enthusiasts to inspect WhatsApp's internal SQLite database in real time without exporting backups.
 
 ---
 
@@ -33,16 +33,13 @@
 📸 **Screenshots**
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/3cd92087-6c17-424c-bd1c-b3922e526fb7" width="30%" />
-  <img src="https://github.com/user-attachments/assets/04a57512-851e-47d6-b7f0-c2f969529c51" width="30%" />
+  <img src="https://github.com/user-attachments/assets/3cd92087-6c17-424c-bd1c-b3922e526fb7" width="24%" />
+  <img src="https://github.com/user-attachments/assets/04a57512-851e-47d6-b7f0-c2f969529c51" width="24%" />
 </p>
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/74f060e7-1b5c-4dfc-97ec-cb067fd4dd19" width="30%" />
-  <img src="https://github.com/user-attachments/assets/22ad014c-a248-4618-a592-3bb2057ef953" width="30%" />
+  <img src="https://github.com/user-attachments/assets/74f060e7-1b5c-4dfc-97ec-cb067fd4dd19" width="24%" />
+  <img src="https://github.com/user-attachments/assets/22ad014c-a248-4618-a592-3bb2057ef953" width="24%" />
 </p>
-
-![Kotlin](https://img.shields.io/badge/kotlin-%237F52FF.svg?style=flat&logo=kotlin&logoColor=white)
-![Android](https://img.shields.io/badge/Android-3DDC84?style=flat&logo=android&logoColor=white)
 
 ---
 
