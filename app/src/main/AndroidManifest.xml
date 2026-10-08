@@ -12,9 +12,9 @@
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@drawable/icono_dimetu"
+        android:icon="@drawable/icono_dimetunuevo"
         android:label="@string/app_name"
-        android:roundIcon="@drawable/icono_dimetu"
+        android:roundIcon="@drawable/icono_dimetunuevo"
         android:supportsRtl="true"
         android:theme="@style/Theme.Dimetu">
 

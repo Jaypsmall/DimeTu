@@ -20,6 +20,9 @@ object TrackerRepository {
     private val _isEnglish = MutableStateFlow(false)
     val isEnglish: StateFlow<Boolean> = _isEnglish.asStateFlow()
 
+    private val _checkIntervalMs = MutableStateFlow(3000L)
+    val checkIntervalMs: StateFlow<Long> = _checkIntervalMs.asStateFlow()
+
     private val _selectedChatId = MutableStateFlow<Long?>(null)
     val selectedChatId: StateFlow<Long?> = _selectedChatId.asStateFlow()
 
@@ -63,11 +66,27 @@ object TrackerRepository {
         _trackingStatus.value = status
     }
 
+    fun clearLogs() {
+        _logs.value = emptyList()
+    }
+
+    fun resetAll() {
+        _selectedChatId.value = null
+        _availableChats.value = emptyList()
+        _trackingMessage.value = null
+        _trackingStatus.value = null
+        clearLogs()
+    }
+
     fun toggleDarkMode() {
         _isDarkMode.value = !_isDarkMode.value
     }
 
     fun toggleLanguage() {
         _isEnglish.value = !_isEnglish.value
+    }
+
+    fun setCheckInterval(ms: Long) {
+        _checkIntervalMs.value = ms
     }
 }

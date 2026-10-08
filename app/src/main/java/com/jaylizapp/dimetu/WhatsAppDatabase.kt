@@ -143,9 +143,6 @@ object WhatsAppDatabase {
             JOIN jid ON chat.jid_row_id = jid._id
             LEFT JOIN jid_map ON jid_map.lid_row_id = jid._id
             LEFT JOIN jid realjid ON realjid._id = jid_map.jid_row_id
-            WHERE EXISTS (
-                SELECT 1 FROM message WHERE message.chat_row_id = chat._id
-            )
             ORDER BY chat.sort_timestamp DESC;
             """.trimIndent()
         } else {
@@ -159,9 +156,6 @@ object WhatsAppDatabase {
                 COALESCE(chat.sort_timestamp, 0)
             FROM chat
             JOIN jid ON chat.jid_row_id = jid._id
-            WHERE EXISTS (
-                SELECT 1 FROM message WHERE message.chat_row_id = chat._id
-            )
             ORDER BY chat.sort_timestamp DESC;
             """.trimIndent()
         }
