@@ -1,4 +1,3 @@
-
 # 👁️ DIMETU (v1.0.1)  ![Android](https://img.shields.io/badge/Android-181717?style=flat&logo=android&logoColor=38B8D8) ![Kotlin](https://img.shields.io/badge/kotlin-181717?style=flat&logo=kotlin&logoColor=38B8D8) 
 
 **DiMeTu** Apk is a powerful WhatsApp database explorer designed exclusively for rooted Android devices. Built with a clean, modern interface and optimized for speed, it allows developers, researchers, and cybersecurity enthusiasts to inspect WhatsApp's internal SQLite database in real time without exporting backups.
