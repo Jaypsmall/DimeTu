@@ -230,15 +230,15 @@ fun TrackerControl() {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "Dimetu v1.0.1",
-                            fontSize = 12.sp,
+                            text = "Dimetu v1.0.2",
+                            fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = if (isDarkMode) Color.Gray else Color.DarkGray
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "Created by JAYLIZ with ❤️",
-                            fontSize = 9.sp,
+                            fontSize = 13.sp,
                             color = (if (isDarkMode) Color.Gray else Color.DarkGray).copy(0.7f),
                             fontWeight = FontWeight.Medium
                         )
