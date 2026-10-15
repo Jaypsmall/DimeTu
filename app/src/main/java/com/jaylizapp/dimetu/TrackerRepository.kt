@@ -76,6 +76,7 @@ object TrackerRepository {
         _trackingMessage.value = null
         _trackingStatus.value = null
         clearLogs()
+        RootSqlite.resetCache()
     }
 
     fun toggleDarkMode() {

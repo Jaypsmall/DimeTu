@@ -15,8 +15,12 @@ object RootReader {
     private val whatsappPaths = listOf(
         "/data/data/com.whatsapp/databases",
         "/data/user/0/com.whatsapp/databases",
+        "/data/user_de/0/com.whatsapp/databases",
         "/data/data/com.whatsapp.w4b/databases",
-        "/data/user/0/com.whatsapp.w4b/databases"
+        "/data/user/0/com.whatsapp.w4b/databases",
+        "/data/user_de/0/com.whatsapp.w4b/databases",
+        "/data/user/999/com.whatsapp/databases",
+        "/data/user/999/com.whatsapp.w4b/databases"
     )
 
     fun requestRoot(): Boolean {
@@ -90,15 +94,19 @@ object RootReader {
                 appendLine("""  cp "$base/$DB_NAME" "$dir/$DB_NAME.tmp";""")
                 appendLine("""  if [ -f "$base/$WAL_NAME" ]; then cp "$base/$WAL_NAME" "$dir/$WAL_NAME.tmp"; else rm -f "$dir/$WAL_NAME.tmp" "$dir/$WAL_NAME"; fi;""")
                 appendLine("""  if [ -f "$base/$SHM_NAME" ]; then cp "$base/$SHM_NAME" "$dir/$SHM_NAME.tmp"; else rm -f "$dir/$SHM_NAME.tmp" "$dir/$SHM_NAME"; fi;""")
-                appendLine("""  chown $uid:$uid "$dir/$DB_NAME.tmp" 2>/dev/null;""")
-                appendLine("""  chown $uid:$uid "$dir/$WAL_NAME.tmp" 2>/dev/null;""")
-                appendLine("""  chown $uid:$uid "$dir/$SHM_NAME.tmp" 2>/dev/null;""")
-                appendLine("""  chmod 660 "$dir/$DB_NAME.tmp" 2>/dev/null;""")
-                appendLine("""  chmod 660 "$dir/$WAL_NAME.tmp" 2>/dev/null;""")
-                appendLine("""  chmod 660 "$dir/$SHM_NAME.tmp" 2>/dev/null;""")
+                appendLine("""  chown $uid:$uid "$dir/$DB_NAME.tmp" 2>/dev/null || chown $uid "$dir/$DB_NAME.tmp" 2>/dev/null;""")
+                appendLine("""  chown $uid:$uid "$dir/$WAL_NAME.tmp" 2>/dev/null || chown $uid "$dir/$WAL_NAME.tmp" 2>/dev/null;""")
+                appendLine("""  chown $uid:$uid "$dir/$SHM_NAME.tmp" 2>/dev/null || chown $uid "$dir/$SHM_NAME.tmp" 2>/dev/null;""")
+                appendLine("""  chmod 666 "$dir/$DB_NAME.tmp" 2>/dev/null;""")
+                appendLine("""  chmod 666 "$dir/$WAL_NAME.tmp" 2>/dev/null;""")
+                appendLine("""  chmod 666 "$dir/$SHM_NAME.tmp" 2>/dev/null;""")
                 appendLine("""  mv "$dir/$DB_NAME.tmp" "$dir/$DB_NAME";""")
                 appendLine("""  if [ -f "$dir/$WAL_NAME.tmp" ]; then mv "$dir/$WAL_NAME.tmp" "$dir/$WAL_NAME"; fi;""")
                 appendLine("""  if [ -f "$dir/$SHM_NAME.tmp" ]; then mv "$dir/$SHM_NAME.tmp" "$dir/$SHM_NAME"; fi;""")
+                appendLine("""  chown -R $uid:$uid "$dir" 2>/dev/null || chown -R $uid "$dir" 2>/dev/null;""")
+                appendLine("""  chmod 666 "$dir/$DB_NAME" 2>/dev/null;""")
+                appendLine("""  if [ -f "$dir/$WAL_NAME" ]; then chmod 666 "$dir/$WAL_NAME" 2>/dev/null; fi;""")
+                appendLine("""  if [ -f "$dir/$SHM_NAME" ]; then chmod 666 "$dir/$SHM_NAME" 2>/dev/null; fi;""")
                 appendLine("""  restorecon -R "$dir" 2>/dev/null;""")
                 appendLine("  copied=1;")
                 if (exitWhenCopied) {

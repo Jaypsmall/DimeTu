@@ -17,6 +17,7 @@ class MainActivity : ComponentActivity() {
     @androidx.compose.material3.ExperimentalMaterial3Api
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        RootSqlite.init(applicationContext)
         enableEdgeToEdge()
         setContent {
             val isDarkMode by TrackerRepository.isDarkMode.collectAsState()
