@@ -72,8 +72,8 @@ class TrackerService : Service() {
                     watchStartTime = 0L
                 }
 
-                if (!RootSqlite.isAvailable()) {
-                    TrackerRepository.addLog("Esperando root/sqlite3...")
+                if (!RootSqlite.isAvailable(this)) {
+                    TrackerRepository.addLog("Esperando root/database...")
                     return@Thread
                 }
 

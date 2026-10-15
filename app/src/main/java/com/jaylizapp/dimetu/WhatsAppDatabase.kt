@@ -47,7 +47,8 @@ object WhatsAppDatabase {
             WHERE message.text_data IS NOT NULL
             ORDER BY message.timestamp DESC, message._id DESC
             LIMIT $safeLimit;
-            """.trimIndent()
+            """.trimIndent(),
+            context
         ) ?: return listOf("No se pudo leer msgstore.db con root/sqlite3")
 
         return output.rows().mapNotNull { row ->
@@ -61,8 +62,8 @@ object WhatsAppDatabase {
     }
 
     fun getChats(context: Context): List<ChatInfo> {
-        val hasJidMap = tableExists("jid_map")
-        val output = queryChats(hasJidMap) ?: queryChats(false)
+        val hasJidMap = tableExists(context, "jid_map")
+        val output = queryChats(context, hasJidMap) ?: queryChats(context, false)
 
         if (output.isNullOrBlank()) return emptyList()
 
@@ -103,7 +104,8 @@ object WhatsAppDatabase {
             AND chat_row_id = $chatId
             ORDER BY timestamp DESC, _id DESC
             LIMIT 1;
-            """.trimIndent()
+            """.trimIndent(),
+            context
         ) ?: return null
 
         return output.firstMessageOrNull()
@@ -123,13 +125,14 @@ object WhatsAppDatabase {
             WHERE message.from_me = 1
             ORDER BY message.timestamp DESC, message._id DESC
             LIMIT 1;
-            """.trimIndent()
+            """.trimIndent(),
+            context
         ) ?: return null
 
         return output.firstMessageOrNull()
     }
 
-    private fun queryChats(useJidMap: Boolean): String? {
+    private fun queryChats(context: Context, useJidMap: Boolean): String? {
         val sql = if (useJidMap) {
             """
             SELECT
@@ -160,12 +163,13 @@ object WhatsAppDatabase {
             """.trimIndent()
         }
 
-        return RootSqlite.query(sql)
+        return RootSqlite.query(sql, context)
     }
 
-    private fun tableExists(tableName: String): Boolean {
+    private fun tableExists(context: Context, tableName: String): Boolean {
         return RootSqlite.query(
-            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = '$tableName' LIMIT 1;"
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = '$tableName' LIMIT 1;",
+            context
         )?.trim() == "1"
     }
 

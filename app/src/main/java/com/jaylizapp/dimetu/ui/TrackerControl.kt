@@ -673,7 +673,7 @@ private fun Header(isDarkMode: Boolean, subTextColor: Color, isEnglish: Boolean)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 16.dp, bottom = 24.dp),
+            .padding(top = 16.dp, bottom = 22.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
