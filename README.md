@@ -120,9 +120,9 @@ The source code of this application is the private property of the developer. Un
 
 ---
 
-# 👨‍💻 Developed by
+# 👨‍💻 Desarrollado por
 
-**Jaypsmall**
+***Jaypsmall***
 
 Android Developer • Root Research • SQLite Explorer • Cybersecurity Enthusiast
 
