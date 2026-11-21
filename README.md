@@ -1,4 +1,4 @@
-# 👁️ DIMETU (v1.0.2)  ![Android](https://img.shields.io/badge/Android-181717?style=flat&logo=android&logoColor=green) ![Kotlin](https://img.shields.io/badge/kotlin-181717?style=flat&logo=kotlin&logoColor=C81AEE) 
+# 👁️ DIMETU (v1.0.2)  ![Android](https://img.shields.io/badge/Android-181717?style=flat&logo=android&logoColor=green) ![Kotlin](https://img.shields.io/badge/kotlin-181717?style=flat&logo=kotlin&logoColor=C81AEE) <a href="https://kotlinlang.org" target="_blank"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/kotlin/kotlin-original.svg" height="30" alt="Kotlin" />
 
 **DiMeTu** Apk es un potente explorador de bases de datos de WhatsApp diseñado exclusivamente para dispositivos Android rooteados. Con una interfaz limpia y moderna, y optimizado para la velocidad, permite a desarrolladores, investigadores y entusiastas de la ciberseguridad inspeccionar la base de datos SQLite interna de WhatsApp en tiempo real sin necesidad de exportar copias de seguridad.
 
